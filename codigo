@@ -1,0 +1,54 @@
+# Substitua "gpio_pin" pelo número do pino GPIO que você conectou o contato momentâneo
+# Substitua "button_pin" pelo número do pino GPIO que você conectou o botão
+# Substitua "rain_sensor_pin" pelo número do pino GPIO que você conectou o sensor de chuva
+# Substitua "mqtt_topic" pelo tópico MQTT que você deseja publicar ao acionar o contato momentâneo
+
+substitutions:
+  gpio_pin: D1
+  button_pin: D2
+  rain_sensor_pin: D3
+  mqtt_topic: "casa/sala/contato-momentaneo"
+
+# Configuração do GPIO para o contato momentâneo
+output:
+  - platform: gpio
+    id: contato_momentaneo
+    pin: !gpio gpio_pin
+    inverted: true
+
+# Configuração do botão
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: !gpio button_pin
+      mode: INPUT_PULLUP
+    id: botao
+
+# Configuração do sensor de chuva
+sensor:
+  - platform: gpio
+    pin:
+      number: !gpio rain_sensor_pin
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Sensor de chuva"
+    update_interval: 1s
+    filters:
+      - delayed_on: 5s
+      - delayed_off: 5s
+    on_value:
+      then:
+        - if:
+            condition:
+              binary_sensor.is_off: botao
+            then:
+              - mqtt.publish:
+                  topic: mqtt_topic
+                  payload: "Sensor de chuva acionado"
+              - switch.turn_on: contato_momentaneo
+
+# Configuração do MQTT
+mqtt:
+  broker: IP_DO_BROKER
+  username: SEU_USERNAME
+  password: SUA_SENHA
